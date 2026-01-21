@@ -55,6 +55,32 @@
                 android:layout_height="wrap_content"
                 android:text="Штрихкод: ..."
                 android:layout_marginTop="4dp"/>
+
+            <!-- Блок "Уже в возврате" (показываем только если товар уже был) -->
+            <LinearLayout
+                android:id="@+id/layoutAlreadyInReturn"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="10dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tvAlreadyQty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Уже в возврате: 0 шт."
+                    android:textStyle="bold"/>
+
+                <TextView
+                    android:id="@+id/tvAlreadyDef"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Брак: 0 шт."
+                    android:layout_marginTop="4dp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 

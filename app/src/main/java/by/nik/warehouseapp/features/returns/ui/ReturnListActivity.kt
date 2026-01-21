@@ -11,7 +11,10 @@ import by.nik.warehouseapp.core.data.InMemoryRepository
 import by.nik.warehouseapp.features.returns.model.ReturnDocument
 import android.view.LayoutInflater
 import android.view.View
-import android.widget.Toast
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.animation.ValueAnimator
+import android.view.ViewGroup
+
 
 
 class ReturnListActivity : AppCompatActivity() {
@@ -58,18 +61,53 @@ class ReturnListActivity : AppCompatActivity() {
         val view = LayoutInflater.from(this).inflate(R.layout.item_return_doc, listContainer, false)
 
         val tvContractor = view.findViewById<TextView>(R.id.tvContractor)
-        val tvInvoice = view.findViewById<TextView>(R.id.tvInvoice)
-        val tvStatus = view.findViewById<TextView>(R.id.tvStatus)
+        val tvInvoiceBadge = view.findViewById<TextView>(R.id.tvInvoiceBadge)
+        val tvStatusBadge = view.findViewById<TextView>(R.id.tvStatusBadge)
+        val tvDocInfo = view.findViewById<TextView>(R.id.tvDocInfo)
+        val tvAcceptance = view.findViewById<TextView>(R.id.tvAcceptance)
+
 
         val btnDetails = view.findViewById<Button>(R.id.btnDetails)
         val btnItems = view.findViewById<Button>(R.id.btnItems)
 
+        val detailsLayout = view.findViewById<View>(R.id.layoutDetails)
+        val tvTotalQty = view.findViewById<TextView>(R.id.tvTotalQty)
+        val tvTotalDef = view.findViewById<TextView>(R.id.tvTotalDef)
+
+        val lines = InMemoryRepository.lines.filter { it.returnId == doc.id }
+        val totalQty = lines.sumOf { it.quantity }
+        val totalDef = lines.sumOf { it.defect }
+
+        tvTotalQty.text = "Всего: $totalQty шт."
+        tvTotalDef.text = "Брак: $totalDef шт."
+
         tvContractor.text = "Контрагент: ${doc.contractorName}"
-        tvInvoice.text = "ТТН № ${doc.invoiceNumber}"
-        tvStatus.text = "${doc.documentDate} • ${docTypeText(doc.docType)}\n${statusText(doc.status)} • Приёмка: ${doc.acceptanceDate}"
+        tvInvoiceBadge.text = "ТТН № ${doc.invoiceNumber}"
+        tvStatusBadge.text = statusText(doc.status)
+
+        val bgRes = when (doc.status) {
+            by.nik.warehouseapp.features.returns.model.ReturnStatus.CREATED -> R.drawable.bg_badge_status_created
+            by.nik.warehouseapp.features.returns.model.ReturnStatus.IN_WORK -> R.drawable.bg_badge_status_inwork
+            by.nik.warehouseapp.features.returns.model.ReturnStatus.ACCEPTED -> R.drawable.bg_badge_status_accepted
+            by.nik.warehouseapp.features.returns.model.ReturnStatus.UPLOADED -> R.drawable.bg_badge_status_uploaded
+        }
+        tvStatusBadge.setBackgroundResource(bgRes)
+
+        tvDocInfo.text = "${doc.documentDate} • ${docTypeText(doc.docType)}"
+        tvAcceptance.text = "Приёмка: ${doc.acceptanceDate}"
+
+        btnDetails.text = "Детали"
+        detailsLayout.visibility = View.GONE
 
         btnDetails.setOnClickListener {
-            Toast.makeText(this, "Детали (позже сделаем раскрытие)", Toast.LENGTH_SHORT).show()
+            val isOpen = detailsLayout.visibility == View.VISIBLE
+            if (isOpen) {
+                collapse(detailsLayout)
+                btnDetails.text = "Детали"
+            } else {
+                expand(detailsLayout)
+                btnDetails.text = "Скрыть"
+            }
         }
 
         btnItems.setOnClickListener {
@@ -97,5 +135,45 @@ class ReturnListActivity : AppCompatActivity() {
         }
     }
 
+    private fun expand(v: View) {
+        v.measure(
+            View.MeasureSpec.makeMeasureSpec((v.parent as View).width, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val targetHeight = v.measuredHeight
+
+        v.layoutParams.height = 0
+        v.visibility = View.VISIBLE
+
+        ValueAnimator.ofInt(0, targetHeight).apply {
+            duration = 180
+            interpolator = AccelerateDecelerateInterpolator()
+            addUpdateListener { animator ->
+                v.layoutParams.height = animator.animatedValue as Int
+                v.requestLayout()
+            }
+            start()
+        }
+    }
+
+    private fun collapse(v: View) {
+        val initialHeight = v.height
+
+        ValueAnimator.ofInt(initialHeight, 0).apply {
+            duration = 180
+            interpolator = AccelerateDecelerateInterpolator()
+            addUpdateListener { animator ->
+                v.layoutParams.height = animator.animatedValue as Int
+                v.requestLayout()
+            }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    v.visibility = View.GONE
+                    v.layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                }
+            })
+            start()
+        }
+    }
 
 }
