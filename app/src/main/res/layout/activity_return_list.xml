@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="12dp">
+
+    <!-- Заголовок -->
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Приёмка возврата"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Поиск -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilSearch"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="Введите № ТТН, контрагента"
+        app:layout_constraintTop_toBottomOf="@id/tvTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="10dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etSearch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:maxLines="1"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Фильтры статусов -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAll"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:text="Все документы"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toBottomOf="@id/tilSearch"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btnInWork"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="6dp"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnInWork"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:text="В работе"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toTopOf="@id/btnAll"
+        app:layout_constraintStart_toEndOf="@id/btnAll"
+        app:layout_constraintEnd_toStartOf="@id/btnAccepted"
+        android:layout_marginEnd="6dp"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAccepted"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:text="Принят"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toTopOf="@id/btnAll"
+        app:layout_constraintStart_toEndOf="@id/btnInWork"
+        app:layout_constraintEnd_toStartOf="@id/btnUploaded"
+        android:layout_marginEnd="6dp"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnUploaded"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:text="Выгружен"
+        android:textAllCaps="false"
+        app:layout_constraintTop_toTopOf="@id/btnAll"
+        app:layout_constraintStart_toEndOf="@id/btnAccepted"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Нижняя кнопка -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAddReturn"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:text="+ Добавить возврат"
+        android:textAllCaps="false"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="12dp"/>
+
+    <!-- Список карточек (пока заглушки) -->
+    <ScrollView
+        android:id="@+id/scroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/btnAll"
+        app:layout_constraintBottom_toTopOf="@id/btnAddReturn"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp">
+
+        <LinearLayout
+            android:id="@+id/listContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+        </LinearLayout>
+
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

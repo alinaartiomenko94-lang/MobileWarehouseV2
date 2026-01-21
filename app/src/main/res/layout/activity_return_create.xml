@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Добавить возврат"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Тип документа -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilDocType"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="Тип документа"
+        app:layout_constraintTop_toBottomOf="@id/tvTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="12dp">
+
+        <!-- Пока обычное поле. Позже сделаем выпадающий список -->
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etDocType"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:focusable="false"
+            android:clickable="true"
+            android:text="Возвратная накладная"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Номер ТТН -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilInvoice"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="№ ТТН"
+        app:layout_constraintTop_toBottomOf="@id/tilDocType"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="10dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etInvoice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:maxLines="1"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Дата документа -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilDocDate"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/tilInvoice"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="10dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etDocDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:focusable="false"
+            android:clickable="true"
+            android:hint="Выберите дату документа"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Контрагент -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilContractor"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:hint="Контрагент"
+        app:layout_constraintTop_toBottomOf="@id/tilDocDate"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="10dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etContractor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:maxLines="1"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Кнопка создать -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCreateReturn"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        android:text="Создать возврат"
+        android:textAllCaps="false"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
