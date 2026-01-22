@@ -18,6 +18,10 @@ import com.google.android.material.textfield.TextInputLayout
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.text.InputFilter
+import androidx.activity.result.contract.ActivityResultContracts
+import android.content.Intent
+
 
 class ReturnCreateActivity : AppCompatActivity() {
 
@@ -35,6 +39,17 @@ class ReturnCreateActivity : AppCompatActivity() {
 
     private val df = SimpleDateFormat("dd.MM.yyyy", Locale("ru"))
 
+    private lateinit var tvFormError: android.widget.TextView
+
+    private val scanInvoiceLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val raw = result.data?.getStringExtra(CameraScanActivity.EXTRA_RESULT).orEmpty()
+                onScanInvoiceRaw(raw)
+            }
+        }
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // ✅ СТАБИЛЬНО: без edge-to-edge, без плясок inset’ов
         WindowCompat.setDecorFitsSystemWindows(window, true)
@@ -49,10 +64,15 @@ class ReturnCreateActivity : AppCompatActivity() {
 
         tilDate = findViewById(R.id.tilDate)
         etDate = findViewById(R.id.etDate)
+        // Запретить клавиатуру на поле даты
         etDate.showSoftInputOnFocus = false
+        etDate.keyListener = null
 
         tilContractor = findViewById(R.id.tilContractor)
         etContractor = findViewById(R.id.etContractor)
+        tvFormError = findViewById(R.id.tvFormError)
+        setupLiveValidation()
+
 
         // Toolbar back (если нужно)
         val toolbar = findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)
@@ -85,35 +105,41 @@ class ReturnCreateActivity : AppCompatActivity() {
     // ---------------------------
     // Invoice scan
     // ---------------------------
+
     private fun setupInvoiceScanButton() {
-        tilInvoice.isEndIconVisible = true
-        tilInvoice.setEndIconOnClickListener {
-            // Пока заглушка (потом камера/ТСД)
-            val rawScan = "96105103169525"
-            onScan(rawScan)
-        }
+        val btnScanInvoice =
+            findViewById<com.google.android.material.button.MaterialButton>(R.id.btnScanInvoice)
 
-        // Нормальная навигация по IME: Next не должен прыгать сам куда-то странно
-        etInvoice.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_NEXT) {
-                // Логично: Next → дата (но календарь не открываем сам)
-                etDate.requestFocus()
-                true
-            } else false
-        }
+        // 1) Ограничение ввода: только цифры и максимум 7
+        etInvoice.filters = arrayOf(
+            InputFilter.LengthFilter(7),
+            InputFilter { source, _, _, _, _, _ ->
+                source.filter { it.isDigit() }
+            }
+        )
 
-        // Нормализация, если “впечатался” длинный код от сканера как клавиатура
+        // 2) Нормализация, если прилетело >7 (вставка/скан как клавиатура)
         etInvoice.addTextChangedListenerSimple { text ->
             val digits = text.filter { it.isDigit() }
-            if (digits.length > 7) {
-                val normalized = digits.takeLast(7)
-                if (normalized != etInvoice.text?.toString().orEmpty()) {
-                    etInvoice.setText(normalized)
-                    etInvoice.setSelection(normalized.length)
-                }
+            val normalized = if (digits.length > 7) digits.takeLast(7) else digits
+
+            if (normalized != etInvoice.text?.toString().orEmpty()) {
+                etInvoice.setText(normalized)
+                etInvoice.setSelection(normalized.length)
             }
+
+            if (normalized.isNotBlank()) clearFieldError(tilInvoice)
         }
+
+        // 3) Реальный запуск камеры-сканера
+        btnScanInvoice.setOnClickListener {
+            android.widget.Toast.makeText(this, "Нажато СКАН", android.widget.Toast.LENGTH_SHORT).show()
+            val intent = Intent(this, CameraScanActivity::class.java)
+            scanInvoiceLauncher.launch(intent)
+        }
+
     }
+
 
     private fun extractInvoiceNumber(raw: String): String {
         val digits = raw.filter { it.isDigit() }
@@ -133,20 +159,26 @@ class ReturnCreateActivity : AppCompatActivity() {
     // Date picker
     // ---------------------------
     private fun setupDatePicker() {
-        // чтобы клавиатура не вылезала на поле даты
         etDate.showSoftInputOnFocus = false
 
-        // ✅ 1) календарь с первого клика
-        etDate.setOnClickListener { showDatePicker() }
-        tilDate.setEndIconOnClickListener { showDatePicker() }
+        etDate.setOnClickListener {
+            hideIme(etDate)
+            showDatePicker()
+        }
 
-        // ✅ 2) если фокус пришёл с клавиатуры/переключением — тоже открываем календарь
+        tilDate.setEndIconOnClickListener {
+            hideIme(etDate)
+            showDatePicker()
+        }
+
+        // ВАЖНО: не открываем календарь на фокусе,
+        // иначе он может открываться сам при любых перемещениях фокуса
         etDate.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) {
-                etDate.post { showDatePicker() }
-            }
+            if (hasFocus) hideIme(etDate)
         }
     }
+
+
 
     private fun showDatePicker() {
         if (isDatePickerOpen) return
@@ -159,13 +191,19 @@ class ReturnCreateActivity : AppCompatActivity() {
         picker.addOnPositiveButtonClickListener { millis ->
             val date = Date(millis)
             etDate.setText(df.format(date))
+            hideIme(etDate)
+            // фокус можно оставить или снять — на твой вкус
+            etDate.post { etDate.clearFocus() }
+        }
 
-            // ✅ остаёмся на поле даты
-            etDate.post { etDate.requestFocus() }
+        // ✅ Вот это и было забыто — иначе календарь только один раз
+        picker.addOnDismissListener {
+            isDatePickerOpen = false
         }
 
         picker.show(supportFragmentManager, "date_picker")
     }
+
 
     // ---------------------------
     // Contractor autocomplete (СПОКОЙНО, без дерганий)
@@ -231,27 +269,68 @@ class ReturnCreateActivity : AppCompatActivity() {
             findViewById<com.google.android.material.button.MaterialButton>(R.id.btnCreate)
 
         btnCreate.setOnClickListener {
+
+            // Сброс общих ошибок
+            tvFormError.visibility = android.view.View.GONE
+            tvFormError.text = ""
+
+            // Считываем значения
             val docTypeText = etDocType.text?.toString().orEmpty().trim()
+            val contractor = etContractor.text?.toString().orEmpty().trim()
             val invoice = etInvoice.text?.toString().orEmpty().trim()
             val docDate = etDate.text?.toString().orEmpty().trim()
-            val contractor = etContractor.text?.toString().orEmpty().trim()
 
-            // Валидация
-            if (invoice.isBlank()) {
-                tilInvoice.error = "Введите №ТТН"
-                return@setOnClickListener
-            } else tilInvoice.error = null
+            // Сброс ошибок на полях
+            clearFieldError(findViewById(R.id.tilDocType))
+            clearFieldError(tilContractor)
+            clearFieldError(tilInvoice)
+            clearFieldError(tilDate)
 
-            if (docDate.isBlank()) {
-                tilDate.error = "Выберите дату"
-                return@setOnClickListener
-            } else tilDate.error = null
+            // Валидация по порядку и фокус на первое пустое поле
+            var firstInvalidView: android.view.View? = null
+
+            if (docTypeText.isBlank()) {
+                showFieldError(findViewById(R.id.tilDocType), "Значение не задано")
+                if (firstInvalidView == null) firstInvalidView = etDocType
+            }
 
             if (contractor.isBlank()) {
-                tilContractor.error = "Введите контрагента"
-                return@setOnClickListener
-            } else tilContractor.error = null
+                showFieldError(tilContractor, "Значение не задано")
+                if (firstInvalidView == null) firstInvalidView = etContractor
+            }
 
+            if (invoice.isBlank() || invoice.length != 7) {
+                showFieldError(tilInvoice, "Введите 7 цифр №ТТН")
+                if (firstInvalidView == null) firstInvalidView = etInvoice
+            } else {
+                clearFieldError(tilInvoice)
+            }
+
+
+            if (docDate.isBlank()) {
+                showFieldError(tilDate, "Значение не задано")
+                if (firstInvalidView == null) firstInvalidView = etDate
+            }
+
+            // Если есть ошибки — показать общий текст и сфокусироваться
+            if (firstInvalidView != null) {
+                tvFormError.text = "Заполните обязательные поля"
+                tvFormError.visibility = android.view.View.VISIBLE
+
+                // фокус + прокрутка к полю
+                firstInvalidView!!.requestFocus()
+                firstInvalidView!!.post {
+                    // если это контрагент — покажем клавиатуру; если дата — нет
+                    if (firstInvalidView == etContractor || firstInvalidView == etInvoice) {
+                        showIme(firstInvalidView!!)
+                    } else {
+                        hideIme(firstInvalidView!!)
+                    }
+                }
+                return@setOnClickListener
+            }
+
+            // --- если всё заполнено — создаём документ ---
             val docTypeEnum =
                 if (docTypeText.contains("Акт", ignoreCase = true)) {
                     ReturnDocType.DISCREPANCY_ACT
@@ -302,4 +381,94 @@ class ReturnCreateActivity : AppCompatActivity() {
             override fun afterTextChanged(s: android.text.Editable?) {}
         })
     }
+
+    private fun showFieldError(til: TextInputLayout, message: String) {
+        til.isErrorEnabled = true
+        til.error = message
+    }
+
+    private fun clearFieldError(til: TextInputLayout) {
+        til.error = null
+        til.isErrorEnabled = false
+    }
+
+    private fun isFormValidNow(): Boolean {
+        val docTypeText = etDocType.text?.toString().orEmpty().trim()
+        val contractor = etContractor.text?.toString().orEmpty().trim()
+        val invoice = etInvoice.text?.toString().orEmpty().trim()
+        val docDate = etDate.text?.toString().orEmpty().trim()
+
+        return docTypeText.isNotBlank()
+                && contractor.isNotBlank()
+                && invoice.isNotBlank()
+                && docDate.isNotBlank()
+    }
+
+    private fun setupLiveValidation() {
+
+        fun maybeHideBottomError() {
+            if (isFormValidNow()) {
+                tvFormError.visibility = android.view.View.GONE
+                tvFormError.text = ""
+            }
+        }
+
+        // Тип документа
+        etDocType.setOnItemClickListener { _, _, _, _ ->
+            clearFieldError(findViewById(R.id.tilDocType))
+            maybeHideBottomError()
+        }
+        etDocType.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (!s.isNullOrBlank()) {
+                    clearFieldError(findViewById(R.id.tilDocType))
+                    maybeHideBottomError()
+                }
+            }
+        })
+
+        // Контрагент
+        etContractor.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (!s.isNullOrBlank()) {
+                    clearFieldError(tilContractor)
+                    maybeHideBottomError()
+                }
+            }
+        })
+
+        // №ТТН
+        etInvoice.addTextChangedListenerSimple { text ->
+            if (text.trim().isNotEmpty()) {
+                clearFieldError(tilInvoice)
+                maybeHideBottomError()
+            }
+        }
+
+        // Дата (у тебя задаётся программно из календаря, но на всякий случай)
+        etDate.addTextChangedListenerSimple { text ->
+            if (text.trim().isNotEmpty()) {
+                clearFieldError(tilDate)
+                maybeHideBottomError()
+            }
+        }
+    }
+
+    private fun onScanInvoiceRaw(raw: String) {
+        val digits = raw.filter { it.isDigit() }
+        if (digits.isBlank()) return
+
+        val invoice = if (digits.length >= 7) digits.takeLast(7) else digits
+        etInvoice.setText(invoice)
+        etInvoice.setSelection(invoice.length)
+
+        // если у тебя есть живая валидация — ошибка снимется автоматически,
+        // но на всякий случай:
+        clearFieldError(tilInvoice)
+    }
+
 }
