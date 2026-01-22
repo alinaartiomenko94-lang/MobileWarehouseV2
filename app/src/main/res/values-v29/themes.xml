@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.NIKWarehouse" parent="Theme.MaterialComponents.Light.NoActionBar">
+
+        <!-- Цвета -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_dark</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+
+        <!-- ВАЖНО: выключаем прозрачные системные панели -->
+        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
+
+        <!-- ВАЖНО: запрет force-dark -->
+        <item name="android:forceDarkAllowed">false</item>
+
+        <!-- На всякий случай (убирает “прозрачности”) -->
+        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:windowTranslucentNavigation">false</item>
+
+    </style>
+
+</resources>

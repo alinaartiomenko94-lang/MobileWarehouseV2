@@ -1,9 +1,17 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.НИКСклад" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ЕДИНСТВЕННАЯ светлая тема приложения -->
+    <style name="Theme.NIKWarehouse" parent="Theme.MaterialComponents.Light.NoActionBar">
+
+        <!-- Основной цвет (AppBar, активные элементы) -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_dark</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+
+        <!-- Отключаем ночную тему полностью -->
+        <item name="android:forceDarkAllowed">false</item>
+
     </style>
 
-    <style name="Theme.НИКСклад" parent="Base.Theme.НИКСклад" />
 </resources>

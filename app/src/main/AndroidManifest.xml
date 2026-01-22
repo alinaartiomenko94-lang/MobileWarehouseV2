@@ -10,7 +10,10 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.НИКСклад">
+        android:theme="@style/Theme.NIKWarehouse">
+        <activity
+            android:name=".features.returns.ui.CameraScanActivity"
+            android:exported="false" />
         <activity
             android:name=".features.returns.ui.ReturnItemEditActivity"
             android:exported="false" />
@@ -19,6 +22,7 @@
             android:exported="false" />
         <activity
             android:name=".features.returns.ui.ReturnCreateActivity"
+            android:windowSoftInputMode="stateVisible|adjustResize"
             android:exported="false" />
         <activity
             android:name=".features.returns.ui.ReturnListActivity"
