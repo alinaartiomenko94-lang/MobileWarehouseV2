@@ -21,6 +21,9 @@ import java.util.Locale
 import android.text.InputFilter
 import androidx.activity.result.contract.ActivityResultContracts
 import android.content.Intent
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 
 
 class ReturnCreateActivity : AppCompatActivity() {
@@ -52,10 +55,30 @@ class ReturnCreateActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // ✅ СТАБИЛЬНО: без edge-to-edge, без плясок inset’ов
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_return_create)
+
+
+        val root = findViewById<android.view.View>(R.id.root)
+        val toolbar = findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)
+        val bottomBlock = findViewById<android.view.View>(R.id.bottomBlock)
+
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val sysBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+
+            // ✅ 1) Заголовок опускаем ниже (не под статус-бар)
+            toolbar.updatePadding(top = sysBars.top)
+
+            // ✅ 2) Низ не перекрывается навигацией телефона
+            bottomBlock.updatePadding(bottom = sysBars.bottom)
+
+            insets
+        }
+
+        root.requestApplyInsets()
 
         // Views
         etDocType = findViewById(R.id.etDocType)
@@ -75,8 +98,8 @@ class ReturnCreateActivity : AppCompatActivity() {
 
 
         // Toolbar back (если нужно)
-        val toolbar = findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)
-        toolbar.setNavigationOnClickListener { finish() }
+//        val toolbar = findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbar)
+//        toolbar.setNavigationOnClickListener { finish() }
 
         setupDocTypeDropdown()
         setupInvoiceScanButton()
@@ -159,11 +182,17 @@ class ReturnCreateActivity : AppCompatActivity() {
     // Date picker
     // ---------------------------
     private fun setupDatePicker() {
+        // запрет клавиатуры
         etDate.showSoftInputOnFocus = false
+        etDate.keyListener = null
 
-        etDate.setOnClickListener {
-            hideIme(etDate)
-            showDatePicker()
+        // ✅ Открывать календарь с первого тапа
+        etDate.setOnTouchListener { v, event ->
+            if (event.action == android.view.MotionEvent.ACTION_UP) {
+                hideIme(v)
+                showDatePicker()
+            }
+            true // важно: событие обработали, чтобы не было "второго клика"
         }
 
         tilDate.setEndIconOnClickListener {
@@ -171,14 +200,11 @@ class ReturnCreateActivity : AppCompatActivity() {
             showDatePicker()
         }
 
-        // ВАЖНО: не открываем календарь на фокусе,
-        // иначе он может открываться сам при любых перемещениях фокуса
-        etDate.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) hideIme(etDate)
+        // На фокусе просто прячем клавиатуру (НЕ открываем календарь)
+        etDate.setOnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) hideIme(v)
         }
     }
-
-
 
     private fun showDatePicker() {
         if (isDatePickerOpen) return
@@ -192,18 +218,26 @@ class ReturnCreateActivity : AppCompatActivity() {
             val date = Date(millis)
             etDate.setText(df.format(date))
             hideIme(etDate)
-            // фокус можно оставить или снять — на твой вкус
-            etDate.post { etDate.clearFocus() }
+
+            // ✅ запоминаем, что надо вернуть фокус на дату
+            etDate.tag = "keep_focus"
         }
 
-        // ✅ Вот это и было забыто — иначе календарь только один раз
         picker.addOnDismissListener {
             isDatePickerOpen = false
+
+            // ✅ после закрытия календаря фиксируем фокус на дате
+            if (etDate.tag == "keep_focus") {
+                etDate.tag = null
+                etDate.post {
+                    etDate.requestFocus()
+                    hideIme(etDate) // на всякий случай
+                }
+            }
         }
 
         picker.show(supportFragmentManager, "date_picker")
     }
-
 
     // ---------------------------
     // Contractor autocomplete (СПОКОЙНО, без дерганий)

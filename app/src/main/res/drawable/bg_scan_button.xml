@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#22000000">
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Фон кнопки -->
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#3E9E3E"/>
+            <solid android:color="#45A432"/>
             <corners
                 android:topRightRadius="12dp"
-                android:bottomRightRadius="12dp"
-                android:topLeftRadius="0dp"
-                android:bottomLeftRadius="0dp" />
+                android:bottomRightRadius="12dp"/>
         </shape>
     </item>
-</ripple>
+
+    <!-- Иконка на всю кнопку -->
+    <item
+        android:drawable="@drawable/ic_scan_24"
+        android:gravity="center" />
+</layer-list>

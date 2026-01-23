@@ -1,33 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
+    android:width="64dp"
+    android:height="64dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-  <path
-      android:pathData="M4,7V5c0,-0.55 0.45,-1 1,-1h2v2H6v1H4z"
-      android:fillColor="#FFFFFF"/>
-  <path
-      android:pathData="M17,4h2c0.55,0 1,0.45 1,1v2h-2V6h-1V4z"
-      android:fillColor="#FFFFFF"/>
-  <path
-      android:pathData="M20,17v2c0,0.55 -0.45,1 -1,1h-2v-2h1v-1h2z"
-      android:fillColor="#FFFFFF"/>
-  <path
-      android:pathData="M7,20H5c-0.55,0 -1,-0.45 -1,-1v-2h2v1h1v2z"
-      android:fillColor="#FFFFFF"/>
-  <path
-      android:pathData="M7,9h1v6h-1z"
-      android:fillColor="#FFFFFF"/>
-  <path
-      android:pathData="M9,9h2v6h-2z"
-      android:fillColor="#FFFFFF"/>
-  <path
-      android:pathData="M12,9h1v6h-1z"
-      android:fillColor="#FFFFFF"/>
-  <path
-      android:pathData="M14,9h2v6h-2z"
-      android:fillColor="#FFFFFF"/>
-  <path
-      android:pathData="M17,9h1v6h-1z"
-      android:fillColor="#FFFFFF"/>
+
+    <!-- Рамка сканирования -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M4,3
+            L9,3
+            L9,5
+            L6,5
+            L6,8
+            L4,8
+            Z
+
+            M15,3
+            L20,3
+            L20,8
+            L18,8
+            L18,5
+            L15,5
+            Z
+
+            M4,16
+            L6,16
+            L6,19
+            L9,19
+            L9,21
+            L4,21
+            Z
+
+            M18,16
+            L20,16
+            L20,21
+            L15,21
+            L15,19
+            L18,19
+            Z" />
+
+    <!-- Полосы штрихкода -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="
+            M7,9 H8 V15 H7 Z
+            M9,9 H10 V15 H9 Z
+            M11,9 H12.5 V15 H11 Z
+            M14,9 H15 V15 H14 Z
+            M16,9 H17 V15 H16 Z" />
 </vector>
