@@ -68,12 +68,18 @@
                     android:id="@+id/etDocType"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="none"
+                    android:background="#673AB7"
+                    android:backgroundTint="#CDDC39"
+                    android:backgroundTintMode="screen"
+                    android:breakStrategy="simple"
                     android:importantForAutofill="no"
+                    android:inputType="none"
                     android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
                     android:paddingTop="14dp"
-                    android:paddingBottom="14dp"/>
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="14dp"
+                    android:shadowColor="#FF5722"
+                    app:dropDownBackgroundTint="#03A9F4" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Контрагент (перенесён вверх) -->
