@@ -6,6 +6,7 @@ plugins {
 
 android {
     namespace = "by.nik.warehouseapp"
+    buildFeatures { compose = true }
     compileSdk {
         version = release(36)
     }
@@ -63,6 +64,8 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
+    implementation(libs.compose.runtime)
+    implementation(libs.compose.ui.text)
 
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
