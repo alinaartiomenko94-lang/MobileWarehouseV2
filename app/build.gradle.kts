@@ -5,6 +5,11 @@ plugins {
 }
 
 android {
+
+    buildFeatures {
+        compose = true
+    }
+
     namespace = "by.nik.warehouseapp"
     buildFeatures { compose = true }
     compileSdk {
@@ -69,6 +74,7 @@ dependencies {
 
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
+
 
 
 }
