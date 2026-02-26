@@ -23,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -31,15 +30,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.PopupProperties
 import androidx.fragment.app.FragmentActivity
 import com.google.android.material.datepicker.MaterialDatePicker
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.material3.Icon
+import by.nik.warehouseapp.R
+import by.nik.warehouseapp.core.data.InMemoryRepository
+import by.nik.warehouseapp.features.returns.model.ReturnDocument
+import by.nik.warehouseapp.features.returns.model.ReturnDocType
+import by.nik.warehouseapp.features.returns.model.ReturnStatus
 
 class ReturnCreateComposeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,29 +78,6 @@ private fun Modifier.safeClickable(onClick: () -> Unit): Modifier {
         onClick = onClick
     )
 }
-
-/** ✅ Временно: подсказки контрагентов (потом заменим на 1С) */
-private object ContractorSuggestionsRepository {
-    private val contractors = listOf(
-        "ИП Самкова Е.В.",
-        "ООО Самовар уюта",
-        "ЧТУП УСамоката",
-        "ООО Ромашка",
-        "ИП Смирнов А.А."
-    )
-
-    fun search(query: String, limit: Int = 6): List<String> {
-        val q = query.trim().lowercase()
-        if (q.length < 3) return emptyList()
-
-        return contractors
-            .asSequence()
-            .filter { it.lowercase().contains(q) }
-            .take(limit)
-            .toList()
-    }
-}
-
 @Composable
 private fun ReturnCreateUiOnly(
     hostActivity: FragmentActivity,
@@ -113,14 +94,18 @@ private fun ReturnCreateUiOnly(
     val textColor = Color(0xFF0F172A)
 
     // ---- Values
-    var contractor by remember { mutableStateOf("") }
+    var contractorName by remember { mutableStateOf("") }
+    var contractorUnp by remember { mutableStateOf("") }
+    var ttCode by remember { mutableStateOf("") }
+    var ttAddress by remember { mutableStateOf("") }
     var docTypeText by remember { mutableStateOf("") }
     var docTypeExpanded by remember { mutableStateOf(false) }
     var invoice by remember { mutableStateOf("") }
     var dateText by remember { mutableStateOf("") }
 
-    // ---- Errors (только текст; подсветка = красная обводка)
+// ---- Errors
     var contractorError by remember { mutableStateOf<String?>(null) }
+    var ttError by remember { mutableStateOf<String?>(null) }
     var docTypeError by remember { mutableStateOf<String?>(null) }
     var invoiceError by remember { mutableStateOf<String?>(null) }
     var dateError by remember { mutableStateOf<String?>(null) }
@@ -144,6 +129,21 @@ private fun ReturnCreateUiOnly(
         errorContainerColor = Color.White, // 🔥 главное
         cursorColor = textColor
     )
+
+    val contractorPickerLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val data = result.data
+                contractorName = data?.getStringExtra(ContractorPickerActivity.EXTRA_CONTRACTOR_NAME).orEmpty()
+                contractorUnp = data?.getStringExtra(ContractorPickerActivity.EXTRA_CONTRACTOR_UNP).orEmpty()
+                ttCode = data?.getStringExtra(ContractorPickerActivity.EXTRA_TT_CODE).orEmpty()
+                ttAddress = data?.getStringExtra(ContractorPickerActivity.EXTRA_TT_ADDRESS).orEmpty()
+                contractorError = null
+                ttError = null
+            }
+        }
 
     val scanInvoiceLauncher =
         rememberLauncherForActivityResult(
@@ -175,10 +175,13 @@ private fun ReturnCreateUiOnly(
     }
 
     fun validateAndFocusFirstInvalid(): Boolean {
-        // порядок проверки = порядок фокуса
-        if (contractor.trim().isEmpty()) {
+        if (contractorName.trim().isEmpty()) {
             contractorError = "Введите контрагента"
         } else contractorError = null
+
+        if (ttCode.trim().isEmpty()) {
+            ttError = "Выберите торговую точку"
+        } else ttError = null
 
         if (docTypeText.trim().isEmpty()) {
             docTypeError = "Выберите тип документа"
@@ -200,13 +203,11 @@ private fun ReturnCreateUiOnly(
             contractorError != null -> contractorFR.requestFocus()
             docTypeError != null -> docTypeFR.requestFocus()
             invoiceError != null -> invoiceFR.requestFocus()
-            dateError != null -> {
-                // поле даты не фокусируем — сразу открываем календарь
-                openDatePicker()
-            }
+            dateError != null -> openDatePicker()
         }
 
         return contractorError == null &&
+                ttError == null &&
                 docTypeError == null &&
                 invoiceError == null &&
                 dateError == null
@@ -236,19 +237,32 @@ private fun ReturnCreateUiOnly(
                     onClick = {
                         val ok = validateAndFocusFirstInvalid()
                         if (ok) {
-                            // TODO: создать ReturnDocument + перейти назад в список
+                            val newDoc = ReturnDocument(
+                                id = System.currentTimeMillis(),
+                                docType = if (docTypeText == "Возвратная накладная")
+                                    ReturnDocType.RETURN_INVOICE
+                                else
+                                    ReturnDocType.DISCREPANCY_ACT,
+                                invoiceNumber = invoice,
+                                documentDate = dateText,
+                                acceptanceDate = SimpleDateFormat("dd.MM.yyyy", Locale("ru")).format(Date()),
+                                contractorName = contractorName,
+                                status = ReturnStatus.CREATED
+                            )
+                            InMemoryRepository.returns.add(newDoc)
+                            (context as Activity).finish()
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
+                        .height(54.dp),
                     shape = RoundedCornerShape(26.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = green)
                 ) {
                     Text("Создать возврат", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(7.dp))
 
                 TextButton(
                     onClick = onCancel,
@@ -271,88 +285,140 @@ private fun ReturnCreateUiOnly(
 
             // ---------------- Контрагент ----------------
             Label("Наименование контрагента", title)
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(7.dp))
 
             Column(Modifier.fillMaxWidth()) {
-                ContractorAutocompleteField(
-                    modifier = Modifier.fillMaxWidth(),
-                    value = contractor,
-                    onValueChange = { newValue ->
-                        contractor = newValue
-                        contractorError = null
-                    },
-                    hintColor = hint,
-                    borderColor = fieldBorder,
-                    shape = shape12,
-                    focusRequester = contractorFR,
-                    isError = contractorError != null,
-                    onNext = { docTypeFR.requestFocus() },
-                    onPick = { picked ->
-                        contractor = picked
-                        contractorError = null
-                        docTypeFR.requestFocus()
-                    },
-                    colors = whiteFieldColors
-                )
+                // Поле контрагента — нажимаешь, открывается экран выбора
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .safeClickable {
+                            val intent = Intent(context, ContractorPickerActivity::class.java)
+                            contractorPickerLauncher.launch(intent)
+                        }
+                ) {
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxSize(),
+                        value = if (contractorName.isBlank()) "" else "${contractorName}",
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        singleLine = true,
+                        placeholder = { Text("Выберите контрагента", color = hint) },
+                        trailingIcon = { Text("›", fontSize = 22.sp, color = hint) },
+                        shape = shape12,
+                        isError = contractorError != null,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledBorderColor = if (contractorError != null) MaterialTheme.colorScheme.error else fieldBorder,
+                            disabledContainerColor = Color.White,
+                            disabledTextColor = textColor,
+                            disabledPlaceholderColor = hint
+                        )
+                    )
+                }
                 FieldErrorText(contractorError)
+
+                // Поле торговой точки — появляется после выбора контрагента
+                if (contractorName.isNotBlank()) {
+                    Spacer(Modifier.height(7.dp))
+                    Label("Торговая точка", title)
+
+                    Spacer(Modifier.height(7.dp))
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth().height(54.dp),
+                        value = if (ttAddress.isBlank()) "" else "${ttAddress}",
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        singleLine = true,
+                        placeholder = { Text("Торговая точка", color = hint) },
+                        shape = shape12,
+                        isError = ttError != null,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledBorderColor = if (ttError != null) MaterialTheme.colorScheme.error else fieldBorder,
+                            disabledContainerColor = Color.White,
+                            disabledTextColor = textColor,
+                            disabledPlaceholderColor = hint
+                        )
+                    )
+                    FieldErrorText(ttError)
+                }
             }
 
             Spacer(Modifier.height(14.dp))
 
             // ---------------- Тип документа ----------------
             Label("Тип документа", title)
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(7.dp))
 
             Column(Modifier.fillMaxWidth()) {
-                ExposedDropdownMenuBox(
-                    expanded = docTypeExpanded,
-                    onExpandedChange = { docTypeExpanded = !docTypeExpanded }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .safeClickable { docTypeExpanded = !docTypeExpanded }
                 ) {
                     OutlinedTextField(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .focusRequester(docTypeFR)
-                            .menuAnchor(),
+                        modifier = Modifier.fillMaxSize(),
                         value = docTypeText,
                         onValueChange = {},
                         readOnly = true,
+                        enabled = false,
                         singleLine = true,
-                        placeholder = { Text("Возвратная накладная", color = hint) },
+                        placeholder = { Text("Выберите тип документа", color = hint) },
                         trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = docTypeExpanded)
+                            Text(
+                                text = if (docTypeExpanded) "▲" else "▼",
+                                color = hint,
+                                fontSize = 12.sp
+                            )
                         },
                         shape = shape12,
                         isError = docTypeError != null,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        keyboardActions = KeyboardActions(
-                            onNext = { invoiceFR.requestFocus() }
-                        ),
-                        colors = whiteFieldColors
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledBorderColor = if (docTypeError != null) MaterialTheme.colorScheme.error else fieldBorder,
+                            disabledContainerColor = Color.White,
+                            disabledTextColor = textColor,
+                            disabledPlaceholderColor = hint
+                        )
                     )
+                }
 
-                    ExposedDropdownMenu(
-                        expanded = docTypeExpanded,
-                        onDismissRequest = { docTypeExpanded = false }
+                // Выпадающие пункты
+                if (docTypeExpanded) {
+                    Spacer(Modifier.height(4.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("Возвратная накладная") },
-                            onClick = {
-                                docTypeText = "Возвратная накладная"
-                                docTypeExpanded = false
-                                docTypeError = null
-                                invoiceFR.requestFocus()
+                        Column {
+                            listOf("Возвратная накладная", "Акт расхождения").forEach { option ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .safeClickable {
+                                            docTypeText = option
+                                            docTypeExpanded = false
+                                            docTypeError = null
+                                            invoiceFR.requestFocus()
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                                ) {
+                                    Text(
+                                        text = option,
+                                        fontSize = 16.sp,
+                                        color = if (docTypeText == option) Color(0xFF2F73D9) else textColor,
+                                        fontWeight = if (docTypeText == option) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+                                if (option == "Возвратная накладная") {
+                                    HorizontalDivider(color = Color(0xFFE5E7EB))
+                                }
                             }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Акт расхождения") },
-                            onClick = {
-                                docTypeText = "Акт расхождения"
-                                docTypeExpanded = false
-                                docTypeError = null
-                                invoiceFR.requestFocus()
-                            }
-                        )
+                        }
                     }
                 }
 
@@ -363,7 +429,7 @@ private fun ReturnCreateUiOnly(
 
             // ---------------- №ТТН ----------------
             Label("№ТТН", title)
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(7.dp))
 
             Column(Modifier.fillMaxWidth()) {
                 Row(
@@ -373,7 +439,7 @@ private fun ReturnCreateUiOnly(
                     OutlinedTextField(
                         modifier = Modifier
                             .weight(1f)
-                            .height(56.dp)
+                            .height(54.dp)
                             .focusRequester(invoiceFR),
                         value = invoice,
                         onValueChange = { raw ->
@@ -387,7 +453,7 @@ private fun ReturnCreateUiOnly(
                         isError = invoiceError != null,
                         placeholder = { Text("Введите или сканируйте №ТТН", color = hint) },
                         shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(
                             onDone = { focusManager.clearFocus() }
                         ),
@@ -397,7 +463,7 @@ private fun ReturnCreateUiOnly(
                     Box(
                         modifier = Modifier
                             .width(62.dp)
-                            .height(56.dp)
+                            .height(54.dp)
                             .background(green, RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp))
                             .safeClickable {
                                 val intent = Intent(context, CameraScanActivity::class.java)
@@ -405,7 +471,12 @@ private fun ReturnCreateUiOnly(
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("SCAN", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_scan_24),
+                            contentDescription = "Сканировать",
+                            tint = Color.White,
+                            modifier = Modifier.size(50.dp)
+                        )
                     }
                 }
 
@@ -416,13 +487,13 @@ private fun ReturnCreateUiOnly(
 
             // ---------------- Дата ----------------
             Label("Дата в ТТН / акте", title)
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(7.dp))
 
             Column(Modifier.fillMaxWidth()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .height(54.dp)
                         .safeClickable { openDatePicker() }
                 ) {
                     OutlinedTextField(
@@ -446,115 +517,6 @@ private fun ReturnCreateUiOnly(
                 }
 
                 FieldErrorText(dateError)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ContractorAutocompleteField(
-    modifier: Modifier = Modifier,
-    value: String,
-    onValueChange: (String) -> Unit,
-    hintColor: Color,
-    borderColor: Color,
-    shape: RoundedCornerShape,
-    focusRequester: FocusRequester,
-    isError: Boolean,
-    onNext: () -> Unit,
-    onPick: (String) -> Unit,
-    colors: TextFieldColors
-) {
-    var expanded by remember { mutableStateOf(false) }
-    var suggestions by remember { mutableStateOf<List<String>>(emptyList()) }
-    var hasFocus by remember { mutableStateOf(false) }
-
-    // ✅ чтобы после выбора не открывалось снова
-    var suppressSearchOnce by remember { mutableStateOf(false) }
-
-    // ✅ debounce + поиск в фоне
-    LaunchedEffect(value, hasFocus) {
-        val q = value.trim()
-
-        if (!hasFocus) {
-            expanded = false
-            suggestions = emptyList()
-            return@LaunchedEffect
-        }
-
-        if (suppressSearchOnce) {
-            suppressSearchOnce = false
-            expanded = false
-            suggestions = emptyList()
-            return@LaunchedEffect
-        }
-
-        if (q.length < 3) {
-            expanded = false
-            suggestions = emptyList()
-            return@LaunchedEffect
-        }
-
-        delay(250)
-
-        val res = withContext(Dispatchers.Default) {
-            ContractorSuggestionsRepository.search(q, limit = 6)
-        }
-
-        val shouldShow = res.isNotEmpty() &&
-                !(res.size == 1 && res[0].equals(q, ignoreCase = true))
-
-        suggestions = res
-        expanded = shouldShow
-    }
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { want -> expanded = want && suggestions.isNotEmpty() },
-        modifier = modifier
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = { onValueChange(it) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .focusRequester(focusRequester)
-                .menuAnchor()
-                .onFocusChanged { state -> hasFocus = state.isFocused },
-            singleLine = true,
-            placeholder = { Text("Начните вводить контрагента", color = hintColor) },
-            shape = shape,
-            isError = isError,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(
-                onNext = { onNext() }
-            ),
-            colors = colors
-        )
-
-        // ✅ обычный DropdownMenu: фокус НЕ теряется, Backspace работает
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            properties = PopupProperties(focusable = false),
-            modifier = Modifier
-                .heightIn(max = 260.dp)
-                .exposedDropdownSize(matchTextFieldWidth = true)
-        ) {
-            suggestions.forEach { item ->
-                DropdownMenuItem(
-                    text = { Text(item) },
-                    onClick = {
-                        suppressSearchOnce = true
-                        expanded = false
-                        suggestions = emptyList()
-
-                        onValueChange(item)
-                        onPick(item)
-                    }
-                )
             }
         }
     }
