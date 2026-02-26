@@ -29,7 +29,7 @@ class ReturnListActivity : AppCompatActivity() {
 
         val btnAddReturn = findViewById<Button>(R.id.btnAddReturn)
         btnAddReturn.setOnClickListener {
-            startActivity(Intent(this, ReturnCreateActivity::class.java))
+            startActivity(Intent(this, ReturnCreateComposeActivity::class.java))
         }
     }
 

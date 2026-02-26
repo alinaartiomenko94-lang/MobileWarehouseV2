@@ -18,6 +18,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.NIKWarehouse">
         <activity
+            android:name=".features.returns.ui.ReturnListComposeActivity"
+            android:exported="false" />
+        <activity
             android:name=".features.returns.ui.ContractorPickerActivity"
             android:exported="false" />
         <activity

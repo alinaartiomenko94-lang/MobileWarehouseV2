@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import by.nik.warehouseapp.features.returns.ui.ReturnCreateActivity
 import by.nik.warehouseapp.features.returns.ui.ReturnCreateComposeActivity
 import by.nik.warehouseapp.features.returns.ui.ReturnListActivity
+import by.nik.warehouseapp.features.returns.ui.ReturnListComposeActivity
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -17,7 +18,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // Точка входа: сразу открываем модуль "Возвраты"
-        startActivity(Intent(this, ReturnCreateComposeActivity::class.java))
-        finish()
+        startActivity(Intent(this, ReturnListComposeActivity::class.java))
     }
 }

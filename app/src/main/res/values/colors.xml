@@ -2,7 +2,7 @@
 <resources>
 
     <!-- Основные цвета приложения -->
-    <color name="primary">#1E88E5</color>
+    <color name="primary">#3E81CB</color>
     <color name="primary_dark">#1565C0</color>
     <color name="background_screen">#E6E9F1</color>
 
