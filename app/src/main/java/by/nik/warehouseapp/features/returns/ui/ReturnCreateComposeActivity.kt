@@ -44,15 +44,29 @@ import by.nik.warehouseapp.core.data.InMemoryRepository
 import by.nik.warehouseapp.features.returns.model.ReturnDocument
 import by.nik.warehouseapp.features.returns.model.ReturnDocType
 import by.nik.warehouseapp.features.returns.model.ReturnStatus
-
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import by.nik.warehouseapp.core.data.ContractorRepository
 class ReturnCreateComposeActivity : AppCompatActivity() {
+
+    companion object {
+        const val EXTRA_RETURN_ID = "return_id"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Если передан id — режим редактирования
+        val returnId = intent.getLongExtra(EXTRA_RETURN_ID, -1L)
+        val existingDoc = if (returnId != -1L)
+            InMemoryRepository.returns.find { it.id == returnId }
+        else null
 
         setContent {
             MaterialTheme {
                 ReturnCreateUiOnly(
                     hostActivity = this,
+                    existingDoc = existingDoc,
                     onBack = { finish() },
                     onCancel = { finish() }
                 )
@@ -81,6 +95,7 @@ private fun Modifier.safeClickable(onClick: () -> Unit): Modifier {
 @Composable
 private fun ReturnCreateUiOnly(
     hostActivity: FragmentActivity,
+    existingDoc: ReturnDocument? = null,
     onBack: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -94,14 +109,20 @@ private fun ReturnCreateUiOnly(
     val textColor = Color(0xFF0F172A)
 
     // ---- Values
-    var contractorName by remember { mutableStateOf("") }
-    var contractorUnp by remember { mutableStateOf("") }
-    var ttCode by remember { mutableStateOf("") }
-    var ttAddress by remember { mutableStateOf("") }
-    var docTypeText by remember { mutableStateOf("") }
+    var contractorName by remember { mutableStateOf(existingDoc?.contractorName ?: "") }
+    var contractorUnp by remember { mutableStateOf(existingDoc?.contractorUnp ?: "") }
+    var ttCode by remember { mutableStateOf(existingDoc?.ttCode ?: "") }
+    var ttAddress by remember { mutableStateOf(existingDoc?.ttAddress ?: "") }
+    var docTypeText by remember { mutableStateOf(
+        when (existingDoc?.docType) {
+            ReturnDocType.RETURN_INVOICE -> "Возвратная накладная"
+            ReturnDocType.DISCREPANCY_ACT -> "Акт расхождения"
+            null -> ""
+        }
+    ) }
     var docTypeExpanded by remember { mutableStateOf(false) }
-    var invoice by remember { mutableStateOf("") }
-    var dateText by remember { mutableStateOf("") }
+    var invoice by remember { mutableStateOf(existingDoc?.invoiceNumber ?: "") }
+    var dateText by remember { mutableStateOf(existingDoc?.documentDate ?: "") }
 
 // ---- Errors
     var contractorError by remember { mutableStateOf<String?>(null) }
@@ -109,6 +130,7 @@ private fun ReturnCreateUiOnly(
     var docTypeError by remember { mutableStateOf<String?>(null) }
     var invoiceError by remember { mutableStateOf<String?>(null) }
     var dateError by remember { mutableStateOf<String?>(null) }
+    var ttPickerExpanded by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -141,6 +163,18 @@ private fun ReturnCreateUiOnly(
                 ttCode = data?.getStringExtra(ContractorPickerActivity.EXTRA_TT_CODE).orEmpty()
                 ttAddress = data?.getStringExtra(ContractorPickerActivity.EXTRA_TT_ADDRESS).orEmpty()
                 contractorError = null
+                ttError = null
+            }
+        }
+
+    val ttPickerLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val data = result.data
+                ttCode = data?.getStringExtra(TtPickerActivity.EXTRA_TT_CODE).orEmpty()
+                ttAddress = data?.getStringExtra(TtPickerActivity.EXTRA_TT_ADDRESS).orEmpty()
                 ttError = null
             }
         }
@@ -217,7 +251,7 @@ private fun ReturnCreateUiOnly(
         topBar = {
             TopAppBar(
                 modifier = Modifier.statusBarsPadding(),
-                title = { Text("Добавить возврат", color = Color.White) },
+                title = { Text(if (existingDoc != null) "Редактировать возврат" else "Добавить возврат", color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Text("←", color = Color.White, fontSize = 22.sp)
@@ -237,19 +271,42 @@ private fun ReturnCreateUiOnly(
                     onClick = {
                         val ok = validateAndFocusFirstInvalid()
                         if (ok) {
-                            val newDoc = ReturnDocument(
-                                id = System.currentTimeMillis(),
-                                docType = if (docTypeText == "Возвратная накладная")
-                                    ReturnDocType.RETURN_INVOICE
-                                else
-                                    ReturnDocType.DISCREPANCY_ACT,
-                                invoiceNumber = invoice,
-                                documentDate = dateText,
-                                acceptanceDate = SimpleDateFormat("dd.MM.yyyy", Locale("ru")).format(Date()),
-                                contractorName = contractorName,
-                                status = ReturnStatus.CREATED
-                            )
-                            InMemoryRepository.returns.add(newDoc)
+                            if (existingDoc != null) {
+                                // Режим редактирования — обновляем существующий
+                                val index = InMemoryRepository.returns.indexOfFirst { it.id == existingDoc.id }
+                                if (index != -1) {
+                                    InMemoryRepository.returns[index] = existingDoc.copy(
+                                        docType = if (docTypeText == "Возвратная накладная")
+                                            ReturnDocType.RETURN_INVOICE
+                                        else
+                                            ReturnDocType.DISCREPANCY_ACT,
+                                        invoiceNumber = invoice,
+                                        documentDate = dateText,
+                                        contractorName = contractorName,
+                                        contractorUnp = contractorUnp,
+                                        ttCode = ttCode,
+                                        ttAddress = ttAddress
+                                    )
+                                }
+                            } else {
+                                // Режим создания — добавляем новый
+                                val newDoc = ReturnDocument(
+                                    id = System.currentTimeMillis(),
+                                    docType = if (docTypeText == "Возвратная накладная")
+                                        ReturnDocType.RETURN_INVOICE
+                                    else
+                                        ReturnDocType.DISCREPANCY_ACT,
+                                    invoiceNumber = invoice,
+                                    documentDate = dateText,
+                                    acceptanceDate = SimpleDateFormat("dd.MM.yyyy", Locale("ru")).format(Date()),
+                                    contractorName = contractorName,
+                                    contractorUnp = contractorUnp,
+                                    ttCode = ttCode,
+                                    ttAddress = ttAddress,
+                                    status = ReturnStatus.CREATED
+                                )
+                                InMemoryRepository.returns.add(newDoc)
+                            }
                             (context as Activity).finish()
                         }
                     },
@@ -259,7 +316,7 @@ private fun ReturnCreateUiOnly(
                     shape = RoundedCornerShape(26.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = green)
                 ) {
-                    Text("Создать возврат", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(if (existingDoc != null) "Сохранить" else "Создать возврат", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(Modifier.height(7.dp))
@@ -321,27 +378,61 @@ private fun ReturnCreateUiOnly(
 
                 // Поле торговой точки — появляется после выбора контрагента
                 if (contractorName.isNotBlank()) {
-                    Spacer(Modifier.height(7.dp))
-                    Label("Торговая точка", title)
+                    Spacer(Modifier.height(10.dp))
 
-                    Spacer(Modifier.height(7.dp))
-                    OutlinedTextField(
-                        modifier = Modifier.fillMaxWidth().height(54.dp),
-                        value = if (ttAddress.isBlank()) "" else "${ttAddress}",
-                        onValueChange = {},
-                        readOnly = true,
-                        enabled = false,
-                        singleLine = true,
-                        placeholder = { Text("Торговая точка", color = hint) },
-                        shape = shape12,
-                        isError = ttError != null,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledBorderColor = if (ttError != null) MaterialTheme.colorScheme.error else fieldBorder,
-                            disabledContainerColor = Color.White,
-                            disabledTextColor = textColor,
-                            disabledPlaceholderColor = hint
+                    val contractor = ContractorRepository.all.find { it.unp == contractorUnp }
+                    val hasMultipleTT = (contractor?.deliveryPoints?.size ?: 0) > 1
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .then(
+                                if (existingDoc != null && hasMultipleTT)
+                                    Modifier.safeClickable { ttPickerLauncher.launch(
+                                        Intent(context, TtPickerActivity::class.java).apply {
+                                            putExtra(TtPickerActivity.EXTRA_CONTRACTOR_UNP, contractorUnp)
+                                        }
+                                    )}
+                                else Modifier
+                            )
+                    ) {
+                        OutlinedTextField(
+                            modifier = Modifier.fillMaxSize(),
+                            value = ttAddress,
+                            onValueChange = {},
+                            readOnly = true,
+                            enabled = false,
+                            singleLine = true,
+                            placeholder = { Text("Торговая точка", color = hint) },
+                            trailingIcon = {
+                                if (existingDoc != null && hasMultipleTT) {
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = null,
+                                        tint = hint
+                                    )
+                                }
+                            },
+                            shape = shape12,
+                            isError = ttError != null,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                disabledBorderColor = if (ttError != null) MaterialTheme.colorScheme.error else fieldBorder,
+                                disabledContainerColor = Color.White,
+                                disabledTextColor = textColor,
+                                disabledPlaceholderColor = hint
+                            )
                         )
-                    )
+                    }
+
+                    if (ttCode.isNotBlank()) {
+                        Text(
+                            text = "Код ТТ: $ttCode",
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                        )
+                    }
                     FieldErrorText(ttError)
                 }
             }

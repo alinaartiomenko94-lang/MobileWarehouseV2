@@ -18,6 +18,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.NIKWarehouse">
         <activity
+            android:name=".features.returns.ui.TtPickerActivity"
+            android:exported="false" />
+        <activity
             android:name=".features.returns.ui.ReturnListComposeActivity"
             android:exported="false" />
         <activity
@@ -34,13 +37,6 @@
             android:exported="false" />
         <activity
             android:name=".features.returns.ui.ReturnItemsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".features.returns.ui.ReturnCreateActivity"
-            android:exported="false"
-            android:windowSoftInputMode="stateVisible|adjustResize" />
-        <activity
-            android:name=".features.returns.ui.ReturnListActivity"
             android:exported="false" />
         <activity
             android:name=".MainActivity"
