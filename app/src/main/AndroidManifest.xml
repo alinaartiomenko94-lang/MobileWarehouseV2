@@ -3,10 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.CAMERA" />
+
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
-
 
     <application
         android:allowBackup="true"
@@ -18,6 +18,15 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.NIKWarehouse">
         <activity
+            android:name=".features.returns.ui.ReturnListComposeActivity"
+            android:exported="false" />
+        <activity
+            android:name=".features.returns.ui.ContractorPickerActivity"
+            android:exported="false" />
+        <activity
+            android:name=".features.returns.ui.ReturnCreateComposeActivity"
+            android:exported="false" />
+        <activity
             android:name=".features.returns.ui.CameraScanActivity"
             android:exported="false" />
         <activity
@@ -28,8 +37,8 @@
             android:exported="false" />
         <activity
             android:name=".features.returns.ui.ReturnCreateActivity"
-            android:windowSoftInputMode="stateVisible|adjustResize"
-            android:exported="false" />
+            android:exported="false"
+            android:windowSoftInputMode="stateVisible|adjustResize" />
         <activity
             android:name=".features.returns.ui.ReturnListActivity"
             android:exported="false" />
