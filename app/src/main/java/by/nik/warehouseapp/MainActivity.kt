@@ -4,9 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import by.nik.warehouseapp.features.returns.ui.ReturnCreateActivity
-import by.nik.warehouseapp.features.returns.ui.ReturnCreateComposeActivity
-import by.nik.warehouseapp.features.returns.ui.ReturnListActivity
 import by.nik.warehouseapp.features.returns.ui.ReturnListComposeActivity
 
 class MainActivity : AppCompatActivity() {
